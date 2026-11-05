@@ -5543,6 +5543,31 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.zero_throttle()
         self.disarm_vehicle()
 
+    def ServoFunctionChangeWhileArmed(self):
+        '''check output scaling is updated when SERVOx_FUNCTION changes while armed'''
+        self.change_mode("MANUAL")
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+
+        self.start_subtest("assign throttle to a spare output while armed")
+        self.set_parameter("SERVO5_FUNCTION", 70)  # Throttle
+        self.delay_sim_time(2, reason="1Hz output setup to run")
+        for pwm in 1500, 2000, 1000:
+            self.set_rc(3, pwm)
+            servo3 = self.get_servo_channel_value(3)
+            self.wait_servo_channel_value(5, servo3, epsilon=10, timeout=5)
+
+        self.start_subtest("reassign steering output to throttle while armed")
+        self.set_rc(3, 1500)
+        self.set_parameter("SERVO1_FUNCTION", 70)  # Throttle
+        self.delay_sim_time(2, reason="1Hz output setup to run")
+        self.set_rc(3, 2000)
+        servo3 = self.get_servo_channel_value(3)
+        self.wait_servo_channel_value(1, servo3, epsilon=10, timeout=5)
+
+        self.zero_throttle()
+        self.disarm_vehicle(force=True)
+
     def MotorBoatSkidGuided(self):
         '''ensure a skid-steering motorboat does not spin in GUIDED when retargeting directly behind'''
         model = "motorboat-skid"
@@ -8418,6 +8443,7 @@ return update()
             self.MissionRetransfer,
             self.FenceFullAndPartialTransfer,
             self.MissionPolyEnabledPreArm,
+            self.ServoFunctionChangeWhileArmed,
             self.OpticalFlow,
             self.RCDuplicateOptionsExist,
             self.RCModeChannelOptionConflict,
